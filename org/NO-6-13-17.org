@@ -31,10 +31,6 @@
 - Hostname: nms.nexcess.net
 - Set Polling Options: https://nms.nexcess.net/settings/sub=external/
 - Oxidzed: Polls device config, version management.
-** DEV-Env 
-http://nms-dev.nexcess.net/
-jcrist-dev
-WetMeceak2
 ** Python JUNOS
 https://github.com/job/py-junos-eznc
 ** RRDTool (Round Robin Database Tool)
@@ -81,10 +77,5 @@ https://asp01.mel.dtw.nexcess.net/
 * MEL SSL VPN Admin
 - Admin panel for MEL VPN
 https://172.16.0.3/dana-admin/
-* 4D Data Centers
-- Ticketing system for LHR
-https://portal.4d-dc.com/
-* 123 Net
-https://secure.123.net 
-Login: jcrist
-Temporary Password: 19571006
+
+
