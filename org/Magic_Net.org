@@ -1,0 +1,79 @@
+* AMC-LOCO-01
+Model: Nano Station Loco M2 AirMax
+Freq: 2.4 GHz
+DB: 8 dBi
+MAC: 68:72:51:25:c0:52
+IP: 10.192.82.1
+OS: Ubuntu - Apache 2 
+** Port Scan
+PORT    STATE SERVICE
+22/tcp  open  ssh
+53/tcp  open  domain
+80/tcp  open  http
+443/tcp open  https
+* AMC-LOCO-02
+AP Name: AMC-MAGICNET-WiFi-L02
+Node Name: LOCO-02-1361363111
+Model: Nano Station Loco M2 AirMax
+Freq: 2.4 GHz
+DB: 8 dBi
+MAC: 68:72:51:25:c0:a7
+IP: 10.192.167.1
+Mesh IP: 100.100.192.167
+OS: Commotion Router Grumpy Cat 1.1
+Mesh Net: commotionwireless.net
+Password: powerdetroit1234567890
+Channel: 11
+** Port Scan
+PORT    STATE SERVICE
+22/tcp  open  ssh
+53/tcp  open  domain
+80/tcp  open  http
+443/tcp open  https
+
+* AMC-MagicNet-WiFi-R05
+Model: Rocket M2
+Model Name: rocket-05-1361087971
+MAC: 68:72:51:21:8d:e3
+IP: 10.141.227.1
+Mesh IP: 100.96.141.227
+OS: Commotion Router Grumpy Cat 1.1
+** Port Scan
+PORT    STATE SERVICE
+22/tcp  open  ssh
+53/tcp  open  domain
+80/tcp  open  http
+443/tcp open  https
+
+* AMC-MagicNet-Wifi-R06
+Model: Rocket M2
+MAC: 68:72:51:21:8d:8c
+IP: 10.30.9.1
+Password: ?
+OS: qMp Clearance 3.2.1 r49389
+** Port Scan
+PORT    STATE SERVICE
+22/tcp  open  ssh
+53/tcp  open  domain
+80/tcp  open  http
+161/tcp open  snmp
+
+* Linksys WRTGL
+MAC:
+IP:
+* AMC-MagicNet-WiFi-P06
+AP Name: AMC-MagicNet-WIFI-P06
+Freq: 2.4 GHz
+Model:  Pico Station M2
+Node Name: AMC-P06-1833598709
+Mesh Name: commotionwireless.net
+MAC: 00:15:6d:4b:7e:f5
+IP: 10.126.245.1
+Mesh IP: 100.74.126.245
+OS: Commotion Router Grumpy Cat 1.1
+Password: magicnet101
+
+* Pass
+powerdetroit1234567890
+magicnet101
+powerdetroit

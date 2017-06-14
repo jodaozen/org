@@ -1,0 +1,1142 @@
+* Apache
+** View statistics
+http://your.server.name/server-status?refresh=N to refresh every N seconds
+** Add mod_security rule
+nkhttpd addRule <domain> <id> 
+** Uppercase to lowercase
+http://brianflove.com/2014/08/11/lowercase-your-uris/
+** View TLS Version
+nmap --script ssl-enum-ciphers -p 443
+** Cors Headers
+# ----------------------------------------------------------------------
+# CORS-enabled images (@crossorigin)
+# ----------------------------------------------------------------------
+# Send CORS headers if browsers request them; enabled by default for images.
+# developer.mozilla.org/en/CORS_Enabled_Image
+# blog.chromium.org/2011/07/using-cross-domain-images-in-webgl-and.html
+# hacks.mozilla.org/2011/11/using-cors-to-load-webgl-textures-from-cross-domain-images/
+# wiki.mozilla.org/Security/Reviews/crossoriginAttribute
+<IfModule mod_setenvif.c>
+ <IfModule mod_headers.c>
+   # mod_headers, y u no match by Content-Type?!
+   <FilesMatch "\.(gif|png|jpe?g|svg|svgz|ico|webp)$">
+     SetEnvIf Origin ":" IS_CORS
+     Header set Access-Control-Allow-Origin "*" env=IS_CORS
+   </FilesMatch>
+ </IfModule>
+</IfModule>
+# ----------------------------------------------------------------------
+# Webfont access
+# ----------------------------------------------------------------------
+# Allow access from all domains for webfonts.
+# Alternatively you could only whitelist your
+# subdomains like "subdomain.example.com".
+<IfModule mod_headers.c>
+ <FilesMatch "\.(ttf|ttc|otf|eot|woff|font.css|css)$">
+   Header set Access-Control-Allow-Origin "*"
+ </FilesMatch>
+</IfModule>
+** Disable Site
+/home/interworx/var/errors/disabled
+* Backups
+** Time
+- Backups occur at 4:00 AM EST
+** Restoring Backups
+- Locate the backup server https://dev.nexcess.net/server-backup-location
+- backupsvr() : Will also tell you which backup server to use
+- Check the disk quota, increase size in nodeworx if necessary.
+- quotas() : Will tell you percentage of disk space used.
+- Log into backup server and select recovery points
+- Select the correct server from the drop down menu.
+- Navigate to the html directory and select restore and save backup to 
+  /home/nexjcrist/
+- Copy files from html/ to html-nex.old/
+- Copy files from /home/nexjcrist/html/ to the root directory of the us* Recreate Database
+- /home/.snapshots/daily.0-6/localhost/mysql : Contains a week of databases
+- mdz (database) : Creates a backup of the current database. Run in /nexjcrist/
+- m -e'drop database (database)' && m -e'create database (database)' 
+- zcat /path/to/database/(database).sql.gz | m (database)
+** Backup Server
+ md5sum /usr/sbin/r1soft/conf/server.allow/* | grep $(md5sum /usr/sbin/r1soft/conf/server.allow/$(grep AUTH /usr/sbin/r1soft/log/cdp.log | grep allow | tail -n1 | grep -Po '(?<=\[)[\d\.]{7,15}(?=:\d+\])') | cut -f1 -d' ') | awk -F'/' '{print $NF}' | xargs -rn1 host -W5 | awk '/name pointer/{sub(/\.$/,"",$NF); printf "https://%s:8001/\n",$NF}'
+* Block IP in IP Tables
+** Drop IP
+iptables -t filter -A TMP_DROP -s 223.206.187.184 -d 208.69.125.231 -j DROP
+iptables -nvL TMP_DROP : Displays IP blocked -s (source) -d (destination)
+- add notes in ticket when adding to IP tables
+ iptables -A INPUT -s <ipaddress> -j DROP
+- If all fails add the IP to: /etc/apf/deny_host.rules
+* Dev Site
+** Create Dev-site
+- nkmagento copy -u dev -n dev
+** Billing
+- Verify the dev site request is from an authorized user on the account.
+- Open an internal ticket
+- Include link to clients account
+- Include a line to the clients ticket
+- Indicate the purpose
+- Include the cost ($25)
+* Disk Quota
+aquota(){
+echo; for _user_ in $(grep -E ":/home/[^\:]+:" /etc/passwd | cut -d\: -f1); do echo -n $_user_; quota -g $_user_ 2>/dev/null| perl -pe 's,\*,,g' | tail -n+3 | awk '{print " "$2/$3*100,$2/1024/1024,$3/1024/1024}'; echo; done | grep '\.' | sort -grk2 | awk 'BEGIN{printf "%-15s %-10s %-10s %-10s\n","User","% Used","Used (G)","Total (G)"; for (x=1; x<50; x++) {printf "-"}; printf "\n"} {printf "%-15s %-10.2f %-10.2f %-10.2f\n",$1,$2,$3,$4}'; echo
+}
+tquota(){
+echo; for _user_ in $(grep -E ":/home/[^\:]+:" /etc/passwd | cut -d\: -f1); do echo -n $_user_; quota -g $_user_ 2>/dev/null| perl -pe 's,\*,,g' | tail -n+3 | awk '{print " "$2/$3*100,$2/1000/1024,$3/1000/1024}'; echo; done | grep '\.' | sort -grk2 | awk 'BEGIN{printf "%-15s %-10s %-10s %-10s\n","User","% Used","Used (G)","Total (G)"; for (x=1; x<50; x++) {printf "-"}; printf "\n"} {printf "%-15s %-10.2f %-10.2f %-10.2f\n",$1,$2,$3,$4}'; echo}
+
+kdiag(){
+echo "Begin base information gather";echo;echo '---Max Clients/Children---';egrep "MaxClients|max_children" /var/log/php-fpm/error.log /var/log/httpd/error_log;echo;echo '---Quota Information---';aquota|head -n 10;echo;echo '---xmlrpc.php checks---';grep 'xmlrpc.php' /home/*/var/*/logs/transfer.log | grep -v ' 40[34] '  | awk '{print $1}' |sort |uniq -c |sort -nrk1,1 |awk '$1>50' ;echo;echo '---wp-login.php checks---';grep 'wp-login.php' /home/*/var/*/logs/transfer.log | grep -v ' 40[34] '  | awk '{print $1}' |sort |uniq -c |sort -nrk1,1 |awk '$1>30' ;echo;echo '---Torrent attack checks---';grep 'torrent' /home/*/var/*/logs/transfer.log | grep -v ' 40[34] ' | awk '{print $1}' |sort |uniq -c |sort -nrk1,1 |awk '$1>30';echo;echo '---Magento Manager checks---';grep 'POST' /home/*/var/*/logs/transfer.log | grep -i downloader|grep -v ' 40[34] ' | awk '{print $1}' |sort |uniq -c |sort -nrk1,1 |awk '$1>30';echo
+}
+clear
+kdiag
+
+alias disk="du -h --max-depth 1"
+alias disks="du -ah --max-depth 1|sort -hr
+* DNS
+** Find Nameservers
+grep ns[12] ~iworx/iworx.ini
+** Nameserver Propagation Query
+https://dns.google.com/
+** To redirect a domain 
+- edit .htaccess to include:
+Redirect 301 / http://domainname.com/
+- Any DNS changes may take up to 24 hours to propagate
+** DNS Down
+- Check if /var directory is full
+- Then restart djbdns
+
+* Error Log
+cat transfer.log | awk '$9 == "500" {print $NS}'
+* Email
+** Settings
+Outgoing:
+Port: 587
+Encryption: TLS
+Incoming:
+IMAP Port: 993
+POP3 Port: 995
+Encryption: SSL
+** Mail Log
+- Log files are displayed in a format called TAI64N. The first sixtenen hex digits represtent a 64-bit number which counts how many seconds have passed since the beginning of 1970.
+The remaining eight hex digits are a 32-bit number which counts nanoseconds since the beginning of the second.
+- tai64nlocal: convets TAI64N timestamps to UTC readable.
+http://stackoverflow.com/questions/21074713/wordpress-high-wait-time-tested-on-pingdom
+** Outlook
+- Guide to troubleshoot 2010
+http://www.theemailadmin.com/2010/08/troubleshooting-outlook-2010-connections/
+https://www.one.com/en/support/guide/mail/setting-up-microsoft-outlook-2010
+- Guide for troubleshooting 2007 - 2013
+https://support.office.com/en-ie/article/What-is-the-Enable-logging-troubleshooting-option-0fdc446d-d1d4-42c7-bd73-74ffd4034af5\
+** Test Email Address
+nslookup -q=mx domainname.com
+telnet mxrecord.com 25
+helo
+mail from: <jcrist@nexcess.net>
+rcpt to: <bad.mailbox@domain.com>
+quit
+** Test Postfix
+<?php
+    mail ('jcrst@nexcess.net', "Test Postfix", "Test mail from postfix");
+?>
+** SMTP Failure Mail Client
+http://www.gn.apc.org/support/i-am-receiving-email-fine-i-cannot-send-messages
+** SMTP Failure Magento
+   http://www.aschroder.com/2011/09/using-smtp-pro-and-ebizmarts-mailchimp-extension-in-magento/
+** Clear Email Queue
+qmqtool -L | grep ', local' | awk '{print $1}' | while read line; do qmqtool -d $line; donea
+** Full Mail Queue
+#You just found there is a server with a huge or concerning mail queue. First log onto the server and run the following command
+echo -e "--Queue status--\n$(qmqtool -s)\n\n--Message sender/script--" && grep -r 'X-PHP-Script\|X-PHP-Originating-Script' /var/qmail/queue/mess/ 2>/dev/null | sed 's/:/ /g' | awk '{if (match($0,/'"Originating"'/)){print $2"@"$4}else{print $2"@"$3}}' | sort | uniq -c | sort -n
+#Depending on the information returned you may need to investigate or delete email. To manage the queue follow the instructions below;
+- sim -j smtp
+- service smtp stop
+# SMTP should noe bw removed from SIM and stopped, from here you should be able to take any action you need
+- (EXAMPLE) qmail-remove -dp "pattern you want to match"
+# NOTE
+# -d will DELETE
+# -r will remove (throw to /var/qmail/queue/yanked/)
+# Afterwards you should start SMTP and reinstall sim
+- service smtp stop
+- sim -j smtp
+# At this point it may be a good idea to perfom a malware scan depending on what you found
+You will need to open an internal ticket and a ticket with the offending client. The internal ticket should contain the following information;
+-The Abuse ticket that sparked your investigation
+-The client ticket that you opened up
+-The qmqtool -s output BEFORE you yanked
+-The breakdown from the command I sent you
+-A copy of a spam email the client was sending
+-Then show what you removed;
+    [0031][root@sip1-81 html]$ qmail-remove -dp footer17.php
+    38233 file(s) match
+#Remember, if you choose to yank the emails instead of delete them be SURE to do a 'df -i' to check the inodes afterwards. Spam emails have been known to fill inodes on the /var partition, that's why it's better to delete rather than yank
+(
+** Remove Email
+http://www.serveridol.com/2012/12/05/qmail-removing-email-from-queue-based-on-the-subject/
+** Email Forwading Google
+https://support.google.com/a/answer/53295?hl=en
+* ExpressionEngine
+** Enforcing HTTPS URLs
+https://www.exp-resso.com/blog/post/2011/08/securing-your-expressionengine-website-with-https
+
+https://expressionengine.stackexchange.com/questions/19577/unable-to-use-assets-in-in-https
+* FTP
+** Failure
+- FTP may fail if there are already 10 PID sessions
+** Test Credentials
+curl ftp://myftpsite.com --user myname:mypassword 
+* Foresight
+https://nocworx.nexcess.net/foresight
+** Resolve 
+Make notes of what went wrong.
+** Escalate
+Move to correct department to resolve the issue.
+** Investigate
+Take ownership of the issue.
+* General Information
+** ACL
+- Whitelist IP : vim /etc/apf/allow-host.rules : dd=(port)s=(IP)
+- Restart Service: apf -r 
+- Blacklist IP : apf -d (IP address)
+** Background a process and disown
+1. Ctrl+Z to stop (pause) the program and get back to the shell.
+2. bg to run it in the background.
+3. Qdisown -h [job-spec] where [job-spec] is the job number (like %1 for the first running job; find about your number with the jobs command) so that the job isn't killed when the terminal closes.
+** Software install
+yum search package (package)
+** Check for software
+yum list installed (package)
+** Check for full patitions
+df -h
+** Server notes
+ /etc/nexcess/server_notes.txt
+** List Domains
+ls -d /home/*/*/html | cut -d/ -f1,4
+** Print Crontabs
+for x in /var/spool/cron/*; do echo -e "\n$x\n------------------------"; cat $x; done;
+** List Nameservers
+if [ -f nslist ]; then rm -rf nslist; fi; touch nslist; for i in $(~iworx/bin/listaccounts.pex --domain); do dig "$i" NS 2>&1 |grep "$i" |grep -v DiG| awk '{print $1,$5}' >> nslist; echo '-------------------------------------------------' >> nslist; done
+** Compare Copies
+find . -exec diff "{}" "/path/to/compare/to/{}" \;
+** Count the number of files
+ls -1 | wc -l
+** Guide on restoring a deleted account
+https://dev.nexcess.net/siteworx-restores?s[]=restore
+** Append Date
+$(date +%y%m%d)
+** Exit login
+Enter  ~  .
+** Exit shell
+~~
+** Dell Drivers
+https://server.deffasecuritythreat.com/public.php?service=files&t=542d0e3d20a2dc949ecfe46bbada7b42
+** Siege Test
+https://www.joedog.org/siege-home/
+** Show Process Progress
+tar -cf - . | pv -s $(du -sb . | awk '{print $1}') | gzip > out.tgz
+** VIM
+*** Comment multiple lines in .htaccess
+http://stackoverflow.com/questions/1676632/whats-a-quick-way-to-comment-uncomment-lines-in-vim
+** Can not find account in Nocworx
+[8:34 AM] Hassan Bazzi: searched for the server
+[8:34 AM] Hassan Bazzi: then clicked the "Shared hosts" button
+[8:34 AM] Hassan Bazzi: then found https://nocworx.nexcess.net/shared-host/1053
+[8:34 AM] Hassan Bazzi: then theres an account list under there
+** Dotfiles
+file:///home/jc/Web_Pages/Using%20custom%20dotfiles%20-%20Support%20-%20Nexcess%20Knowledge%20Base.html
+* .htaccess
+** Whitelisting 
+RewriteCond %{REMOTE_ADDR} !^192\.168\.1\.102
+RewriteRule ^(.*)$ / [F,L]
+** Rewrite all non-www with to
+RewriteCond %{HTTP_HOST} ^nsale.in [NC]
+RewriteRule ^(.*)$ http://www.domain.com/$1 [L,R=301]
+** Rewrite all URLs to https
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteRule ^/?(.*) https://%{SERVER_NAME}/$1 [R,L]
+** Index Of
+Options All +Indexes
+** Prevent usecure URL from redirecting to HTTPS homepage
+RewriteCond %{HTTPS} off [OR]
+RewriteCond %{HTTP_HOST} !^www\.
+RewriteRule ^ https://www.chessbazaar.com%{REQUEST_URI} [NE,L,R=301]
+** Redirect all excpet IP
+RewriteEngine On
+RewriteCond %{REMOTE_ADDR} !^122\.176\.204\.106
+RewriteCond %{HTTP_HOST} stationeryshop.in$ [NC]
+RewriteCond %{REQUEST_URI} !^/(index.php/?)?global/$
+RewriteRule ^(.*)$ http://stationeryshop.in/global/ [R=301,L]
+
+* Infected Site
+** Modified within 24 hours
+find * -mtime -1 -ls
+** Malware update
+maldet -u in /html 
+** Maldet Scan
+maldet -a /chroot/home/(user)/(domain)/html >> ~/maldet.results.txt
+yara /var/lib/clamav/includes.yara 
+** Preserve and quarantine files.
+nksir
+** Google Phishing
+https://support.google.com/webmasters/answer/168328?hl=en
+* Iworx
+** Support URL
+- Support: http://support.interworx.com/
+** Swap Pointer with Primary
+~iworx/bin/domain-promoter.pex --pointer-to-primary --pointer-domain=$POINTER --primary-domain=$DOMAIN
+- Domain Swap: Backup both sites if they contain data. Set the secondary domain as a pointer.
+** Interworx Down
+- When restarting iworx check the /usr directory for du and inodes. License expired message.
+** Click-Jacking Vulnerability
+Header always append X-Frame-Options SAMEORIGIN
+to /usr/local/interworx/etc/httpd/httpd-custom.conf
+** Permissions Fix
+~iworx/bin/varpermsfix.pex --siteworx <domain_name>
+** Local Delivery
+ siteworx -u --login_domain= -c setup --controller
+** Fix Permissions
+~iworx/bin/varpermsfix.pex --siteworx=domain.com
+** Account restore
+~iworx/bin/import.pex --archive=/path/to/file --ip-address= --control-panel=siteworx
+Siteworx backup in /home/.snapshots/iworx_backups/
+* Logs
+** Server Location
+- php-fpm = less /var/log/php-fpm/error.log
+- appache = less /var/log/httpd/error.log
+- database = less /var/log/messages
+- outgoing = less /var/log/send/current
+- smtp = less /var/log/smtp/current
+- imap = less /var/log/imap4/current
+- pop = less /var/log/pop3/current
+- spam = less /var/log/maillog
+- ftp = less /var/log/proftpd/xfer.log
+- ssh/sftp = less /var/log/secure
+- mysql = less /var/log/mysql.log
+- cron = less /var/log/cron
+** User logs
+- apache error = /home/(user)/var/logs/error.log
+- apache transfer = /home/(user)/logs/transfer.log
+- php-fpm = /home/(user)/var/php-fpm/
+** Clean Logs
+logclean ()
+{
+    _date=$(date +%s);
+    case $1 in
+        "")
+            echo "Specify log name to clean.";
+            return
+        ;;
+        *)
+            l=$(echo $1)
+        ;;
+    esac;
+    tail -n 10000 "$l" > "$l"."$_date";
+    gzip "$l"."$_date";
+    : > $l
+}
+* Magnento
+** Admin Locked
+<?php
+/*
+ * Create New Admin User
+ * @author    Ivan Weiler, Inchoo <web@inchoo.net>
+ */
+
+//define USERNAME, EMAIL and PASSWORD and uncomment(#) this 3 lines
+#define('USERNAME','inchoo');
+#define('EMAIL','xyz@inchoo.net');
+#define('PASSWORD','inchoo555');
+
+
+if(!defined('USERNAME') || !defined('EMAIL') || !defined('PASSWORD')){
+	echo 'Edit this file and define USERNAME, EMAIL and PASSWORD.';
+	exit;
+}
+
+//load Magento
+$mageFilename = 'app/Mage.php';
+if (!file_exists($mageFilename)) {
+	echo $mageFilename." was not found";
+	exit;
+}
+require_once $mageFilename;
+Mage::app();
+
+try {
+	//create new user
+	$user = Mage::getModel('admin/user')
+		->setData(array(
+			'username'  => USERNAME,
+			'firstname' => 'John',
+			'lastname'	=> 'Doe',
+			'email'     => EMAIL,
+			'password'  => PASSWORD,
+			'is_active' => 1
+		))->save();
+
+} catch (Exception $e) {
+	echo $e->getMessage();
+	exit;
+}
+
+try {
+	//create new role
+	$role = Mage::getModel("admin/roles")
+			->setName('Inchoo')
+			->setRoleType('G')
+			->save();
+	
+	//give "all" privileges to role
+	Mage::getModel("admin/rules")
+			->setRoleId($role->getId())
+			->setResources(array("all"))
+			->saveRel();
+
+} catch (Mage_Core_Exception $e) {
+	echo $e->getMessage();
+	exit;
+} catch (Exception $e) {
+	echo 'Error while saving role.';
+	exit;
+}
+
+try {
+	//assign user to role
+	$user->setRoleIds(array($role->getId()))
+		->setRoleUserId($user->getUserId())
+		->saveRelations();
+
+} catch (Exception $e) {
+	echo $e->getMessage();
+	exit;
+}
+
+echo 'Admin User sucessfully created!<br /><br /><b>THIS FILE WILL NOW TRY TO DELETE ITSELF, BUT PLEASE CHECK TO BE SURE!</b>';
+@unlink(__FILE__);
+
+** Shopping Cart Session
+web/cookie/cookie_lifetime
+session.gc_maxlifetime
+** Invalid Form Key
+DELETE FROM core_config_data WHERE path='web/cookie/cookie_domain';
+DELETE FROM core_config_data WHERE path='web/cookie/cookie_path';
+** Connect
+*** Unknown cipher in list: TLSv1
+downloader/lib/Mage/HTTP/Client/Curl.php
+change: $this->curlOption(CURLOPT_SSL_CIPHER_LIST, 'TLSv1'); to
+$this->curlOption(CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1);
+** General
+- nkmagento: shows magento information
+- nkmagento repair -c . : Clears Cache
+- /html/var/logs : Remove files from this directory to manage disk space 
+- /html/app/etc/local.xml : Contains a users database information.
+** Errors
+- /html/var/report/ : Contains a log of errors
+- 505 Errors : rm /html/maintenance.flag
+** Order Email
+http://magento.stackexchange.com/questions/45571/new-order-email-confirmation-not-being-sent-magento-1-9-1
+** Magmi
+- First rename the magmi directory and create an .htaccess/.htpasswd file.
+# Password protection
+AuthType Basic
+AuthName "Password Protected"
+AuthUserFile $PATH_TO_HTPASSWORD
+Require valid-user
+
+# Whitelist by IP address
+Order deny,allow
+deny from all
+allow from $CLIENT_IP_ADDRESS
+** Muti-store
+- Method 2: Shared directory for all stores using pointer domains.
+- PHP Fix: Add to /etc/httpd/conf.d/vhost_(domain)
+<IfModule mod_fastcgi.c>
+RewriteCond %{REQUEST_URI} !^/php\.fcgi
+SetEnvIf REDIRECT_MAGE_RUN_CODE (.+) MAGE_RUN_CODE=$1
+SetEnvIf REDIRECT_MAGE_RUN_TYPE (.+) MAGE_RUN_TYPE=$1
+</IfModule>
+*** Cloudflare Loop
+(index.php)
+foreach (array(
+'SERVER_PORT' => 443,
+'HTTP_X_FORWARDED_PROTO' => 'https',
+'HTTP_CF_VISITOR' => '{"scheme":"https"}'
+) as $key => $value) {
+if (isset($_SERVER[$key]) && $_SERVER[$key] == $value) {
+$_SERVER['HTTPS'] = 'on';
+break;
+}
+}
+** Links
+*** Alan Storm
+http://magetalk.com/
+*** Magento 2
+http://community.magento.com/
+https://dev.nexcess.net/magento2/
+*** EAV Model
+http://alanstorm.com/magento_advanced_orm_entity_attribute_value_part_1
+** Broken Admin
+*** Merged JS or CSS
+change the value in the core_config_data table to 0 to turn off javascript merging  
+** Patches
+http://pubfiles.nexcess.net/magento/patches/
+** Catalog Price Rule Disappears
+http://stackoverflow.com/questions/25280095/magento-catalog-price-rule-disappears-at-night
+** Permissions broken images
+lib/Varien/File/Uploader.php
+chmod 640 > 644
+** 100 Router Match Iterations
+https://github.com/convenient/magento-ce-ee-config-corruption-bug#the-fixa
+** Sagepay
+app/code/local/Ebizmarts/SagePaySuite/Model/Api/Payment.php
+** Input variables exceeded 1000, max_input_vars 
+http://magento.stackexchange.com/questions/6319/impossible-to-save-category-with-more-that-1000-products/6320#6320
+** Long Reindex, core_url_rewrite
+http://thedeveloperworldisyours.com/magento/how-we-solved-magento-core_url-issues-once-and-for-all/#sthash.ciuyYc81.dpbs
+** Remove SID
+app/code/core/Mage/Core/Model/App.php
+Change $_useSessionInUrl value from “true” to “false“.
+* Magento_2.0
+** Install Sample Data
+http://devdocs.magento.com/guides/v2.0/install-gde/install/sample-data-after-magento.html
+http://devdocs.magento.com/guides/v2.0/install-gde/prereq/connect-auth.html
+nkmagento2 i -a -p "latest-with-samples"
+** Update base URL
+magento setup:store-config:set --base-url
+--base-url-secure
+** Configure Redis/Memcached
+file:///home/jc/Web_Pages/How%20to%20configure%20Magento%202%20-%20Support%20-%20Nexcess%20Knowledge%20Base.html
+** Something went wrong
+https://github.com/magento/magento2/commit/b046944df8fd74def0a462b61e1c8cf5acb41db4
+https://github.com/magento/magento2/issues/6740
+** Optimize
+*** Gzip Javascript
+AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript text/x-js application/x-javascript application/javascript
+*** Minify
+    https://gist.github.com/lewisp6/b7c50b4d82ef4d3d5d6dc888e8d1bdba
+*** Links
+https://firebearstudio.com/blog/the-magento-2-performance-guide-out-of-the-box-features-extensions-tips.html
+https://mirasvit.com/blog/7-ways-to-improve-your-magento-2-site-speed.html
+** Deploy Static Content
+Remove pub/static
+Remove var/cache
+Remove var/composer_home
+Remove var/generation
+Remove var/page_cache
+Remove var/view_preprocessed
+rm -r pub/static var/cache/ var/composer_home/ var/generation/ var/page_cache/ var/view_preprocessed/
+php bin/magento setup:static-content:deploy
+** Reset Password
+UPDATE admin_user SET password = CONCAT(SHA2('xxxxxxxxNewPassword', 256), ':xxxxxxxx:1') WHERE username = 'admin';
+** Unlock User
+php bin/magento admin:user:unlock <username>
+* Memcached and Redis
+** Memcached
+echo "flush_all" | nc localhost 11211
+echo "flush_all" | nc -U /path/to/the/socket.sock
+echo "flush_all" | nc -U /var/tmp/memcached.isupersp.isupersport.com_cache.sock
+echo "stats" | nc -U /var/tmp/memcached.isupersp.isupersport.com_cache.sock
+** Flush Cache as a user
+echo "flushall" | redis-cli -h 127.0.0.1 -p 6379
+-Flushing is socket grab socket from app/etc/local.xml or nkredis list or nkmemecache list
+** Script
+alias flush_memcache='echo "flush_all" | nc -U /var/tmp/memcached.<socket used>'
+alias flush_redis='echo "FLUSHALL" | nc -U /var/tmp/redis.<socket used>'
+- To enable cache flushing through command line add the user to the nc group.
+usermod -a -G nc $Username
+** Flush redis-multi
+redis-cli -s /var/tmp/redis-multi_signatu3.cosmedicine.com_cache.sock
+* Modsec
+** General
+/etc/httpd/conf.d/mod_security.conf
+/var/log/httpd/modsec_audit.log | less
+modgrep -s $uniqueID_OR_IPAddr -f /var/log/httpd/modsec_audit.log | less
+- CRS version 2.2.8 or higher uses anomaly scoring.
+- Traditional mode either blocks a request or logs it.
+- Anomaly scoring adds an 'anomaly score' every time a rule matches a request. If the anomaly threshold is reached for that request, the request is blocked.
+- Please avoid whitelisting rules 981176, or any rules that start with 4049*.
+** Checks for CRS version
+awk '/Core ModSecurity Rule Set ver/ {print $NF}' /etc/httpd/modsecurity.d/modsecurity_crs_10_*.conf
+** Whitelisting Mod_sec rules
+1) Reproduce the issue or get client's IP address.
+2) Get the unique ID string from Apache error log.
+3) Check modsec_audit.log for rules
+4) If a rule is blocking legitimate requests, place the following in the vhost:
+5) Whitelist Rules
+   - Use either nkhttpd or create a tag.
+https://dev.nexcess.net/modsecurity
+** Ifmodule
+     <IfModule mod_security2.c> 
+     <LocationMatch /wp-login.php> 
+     SecRuleRemoveByID
+     SecRuleRemoveByTag 'OWASP_CRS/WEB_ATTACK/XSS' 
+     </LocationMatch>
+     </IfModule>a
+** Brute force attack
+*** Remove IP address from block list
+rm /var/lib/mod_security/ip.* 
+*** Add IP address to whitelist
+/etc/httpd/modsecurity.d/modsecurity_crs_11_brute_force_ip_wl.data
+or
+/etc/httpd/modsecurity.d/modsecurity_crs_48_local_exceptions.conf
+* Monitoring Traffic
+** Hits: 
+transfer.log | cut -d\  -f12- | sort | uniq -c | sort -rn | head -20
+** Bandwidth: 
+transfer.log | awk '{tx[$1]+=$10} END {for (x in tx) {print x, "\t", tx[x]/1048576, "M"}}' | sort -k 2n | tail -n 20 | tac
+** Top IP's: 
+transfer.log | awk '{freq[$1]++} END {for (x in freq) {print freq[x], x}}' | sort -rn | head -20
+** Hits per hour : 
+echo -e "\n\n"; find /home/*/var/*/logs/ -name transfer.log -exec awk -v date="$(date +%d/%b/%Y:%H)" -v SUM=0 '$0 ~ date {SUM+=1} END{print "{} " SUM}' {} \; | grep -v :0 |grep -ve "\b0\b" | sort -nr -k 2 |awk 'BEGIN{print "\t\t\tTransfer Log\t\t\t\t\tHits Last Hour"}{printf "%-75s %-s\n", $1, $2}'; echo -e "\n\Bandwidth"
+** Bandwidth used by IP: 
+zcat -f transfer.log* | awk -F\" '{ print$1" "$3 }' | sed -re 's/\[([0-9]{1,2}\/[A-Za-z]{3}\/[0-9]{4}):([0-9]{2}:[0-9]{2}:[0-9]{2}) -[0-9]{4}\]//g' -e 's/    / /g' | awk '{ a[$1] += $5 } END { for(i in a) { printf "%.2fM\t%s\n", a[i]/1048576, i; b+=a[i] }; } END { printf "%.2fM\ttotal\n", b/1048576 }' | awk '{ if (length($1) < 8) print $1"\tquota\t"$2; else print$1"\t"$2 }' | sort -rn -k1 | head -n21
+** Max Children: 
+tail -n130 /var/log/php-fpm/error.log | grep -i max | grep (user) | wc -l
+** Server Traffic: 
+tail -f /home/*/var/*/logs/transfer.log
+** View Open connections
+netstat -an | grep :80 | awk -F':' '{print $8}' | sort | uniq -c | sort -rn | head
+** View Process stopping Apache restart
+netstat -lnp | grep 80 
+(where xxx/httpd = PID and program name)
+** Bots
+cut -d\  -f12- transfer.log | egrep -i 'bot|spider|crawl|catalog|index' | sort | uniq -c | sort -rn | head
+** Show Memory Info Hourly
+sar -qr
+** BitTorrent Attack
+- Add to the top of .htaccess
+<IfModule mod_rewrite.c>
+    RewriteEngine on
+    # .*torrent will block libtorrent, Bittorrent, rtorrent, and uTorrent
+    RewriteCond %{HTTP_USER_AGENT} '.*torrent' [OR,NC]
+    RewriteCond %{HTTP_USER_AGENT} '^qqdownload' [OR,NC]
+    RewriteCond %{HTTP_USER_AGENT} '^BitComet' [OR,Nc]
+    RewriteCond %{HTTP_USER_AGENT} '^BTAndroid' [OR,Nc]
+    RewriteCond %{HTTP_USER_AGENT} '^Azureus' [OR,NC]
+    RewriteCond %{HTTP_USER_AGENT} '^BTSP' [OR,NC]
+    RewriteCond %{HTTP_USER_AGENT} '^Transmission' [OR,NC]
+    RewriteCond %{HTTP_USER_AGENT} '^Xfplay' [OR,NC]
+    RewriteCond %{REQUEST_URI} '^/announce$' [OR,NC]
+    RewriteCond %{REQUEST_URI} '^/announce\.php$' [NC]
+    RewriteRule ^.* - [F,L]
+</IfModule> 
+** Netstat
+*** Sumary
+netstat -s | less
+*** Detect DDOS
+netstat -atun | awk '{print $5}' | cut -d: -f1 | sed -e '/^$/d' |sort | uniq -c | sort -na
+*** Total unique IP addresses
+netstat -nat | awk '{ print $5}' | cut -d: -f1 | sed -e '/^$/d' | uniq | wc -l
+*** List unique IP addresses
+netstat -nat | awk '{ print $5}' | cut -d: -f1 | sed -e '/^$/d' | uniq
+*** More information on IP address
+netstat -nat |grep {IP-address} | awk '{print $6}' | sort | uniq -c | sort
+** Block Traffic
+for _ip in $(grep POST transfer.log | grep "/share/index/share/" | awk '{print $1}' | sort | uniq); do apf -d $_ip "POST share/index/share attack"; done
+** Clear Semaphores
+for i in `ipcs -s | awk '/httpd/ {print $2}'`; do (ipcrm -s $i); done
+** View Nocworx bandwidth graph
+1. Find the URL for the desired allocation, service, or port. (such as https://nocworx.nexcess.net/service/1234 )
+2. Put a `.graph` at the end ( https://nocworx.nexcess.net/service/1234.graph )
+3. Specify the start date, and the end date or span. Examples:
+
+From Jan 1 to now
+https://nocworx.nexcess.net/service/1234.graph?start=1483228800
+
+From Jan 1, one week
+The "span" can be day, week, month, or year.
+https://nocworx.nexcess.net/service/1234.graph?start=1483228800&span=week
+
+From Jan 1 to Feb 17
+https://nocworx.nexcess.net/service/1234.graph?start=1483228800&end=1487289600
+* MySQL
+** Kill Multiple Queries
+select concat('KILL ',id,';') from information_schema.processlist where user='root';
++------------------------+
+| concat('KILL ',id,';') |
+p+------------------------+
+| KILL 3101;             |
+| KILL 2946;             |
++------------------------+
+2 rows in set (0.00 sec)
+select concat('KILL ',id,';') from information_schema.processlist where user='root' into outfile '/tmp/a.txt';
+Query OK, 2 rows affected (0.00 sec)
+source /tmp/a.txt;
+Query OK, 0 rows affected (0.00 sec)
+** Count URL rewrite
+select count(*) from core_url_rewrite;
+** Using old Password
+SET @@session.old_passwords=0;
+select host,user,LENGTH(password),plugin from mysql.user where user in ('toptextu_texnew');
+UPDATE mysql.user SET password=PASSWORD('uQo9HToyLKyD'),plugin='mysql_native_password' WHERE user IN('toptextu_texnew') AND host IN('%');
+** Import Tables
+mysqladmin -u root -p create restore
+Restore the full dump in the temp database:
+
+mysql -u root -p restore < fulldump.sql
+Dump the table you want to recover:
+
+mysqldump restore mytable > mytable.sql
+Import the table in another database:
+
+mysql -u root -p database < mytable.sql
+** Integrity contraint violation
+http://magento.stackexchange.com/questions/36101/help-with-reindexing-the-category-product-attribute-index-sqlstate23000-i
+** Pager
+pager less -SFX
+\G = formatted output
+** Kill Queries
+mysqladmin -u (username) -p (password) processlist | grep online_olccomp | awk '{print "mysqladmin kill " $2}' | bash
+** Show base_url table
+select * from core_config_data where path rlike 'base_url'; 
+** Eugenes Scripts
+*** Force Import
+zcat agritura_mag.sql.gz | perl -pe 's,INSERT INTO,INSERT IGNORE INTO,' | m agritura_mag
+*** Manually create dev-site
+reated a new dev database
+	mysql> CREATE DATABASE 'luxuryte_dev_real';
+
+## Add User privileges to the database
+	$ grep -e username -e password /home/luxuryte/dev.luxurytemple.com/html/app/etc/local.xml
+	                    <username><![CDATA[luxuryte_dev]]></username>
+						     <password><![CDATA[LordsIsletsCalledViable46]]></password>
+
+	mysql> GRANT ALL PRIVILEGES ON luxuryte_dev_real.* TO luxuryte_dev@'%';
+	mysql> FLUSH PRIVILEGES;
+
+## Test by connecting to the database from CLI
+	$ mysql --user=luxuryte_dev --password luxuryte_dev_real
+	Enter password:
+
+## Copy the database from live to dev
+	$ mysqldump --user=luxuryte_dev --password luxuryte_dev | m luxuryte_dev_real
+	Enter password:
+
+## Verify that database fully copied over by comparing number tables
+	## Update PAGER
+	mysql> PAGER cat > /dev/null
+	PAGER set to 'cat > /dev/null'
+		-- OR -- 
+	mysql> \P cat > /dev/null
+	PAGER set to 'cat > /dev/null'
+
+
+	## Compare row count
+	mysql> SHOW TABLES FROM luxuryte_dev;
+	496 rows in set (0.00 sec)
+
+	mysql> SHOW TABLES FROM luxuryte_dev_real;
+	496 rows in set (0.00 sec)
+
+
+## Update configuration file on the appropriate installation (make sure to comment out original line)
+	<!-- <dbname><![CDATA[luxuryte_dev]]></dbname> -->
+	<dbname><![CDATA[luxuryte_dev_real]]></dbname>
+
+## Update base_urls
+	mysql> UPDATE core_config_data SET value=REPLACE(value,'www','dev') WHERE path RLIKE 'base_url';
+		-- OR --
+	mysql> UPDATE core_config_data SET value='http://dev.luxurytemplate.com/' WHERE path RLIKE 'base_url';
+
+## Load site to verify that changes are valid
+** Force Import DB Error
+zcat agritura_mag.sql.gz | mysql -u -f agritura_mag  agritura_mag -p
+mysql -u username -p database_name < file.sql
+** Lock wait timeout
+m -e'SHOW FULL PROCESSLIST\G' > ~/processlist-$(date +%m-%d-%yT%H:%M).dump &&  m -e'SHOW ENGINE INNODB STATUS\G' > ~/innodb-$(date +%m-%d-%yT%H:%M).dump && m -e'SHOW GLOBAL STATUS\G' > ~/globalstat-$(date +%m-%d-%yT%H:%M).dump && m -e'SHOW GLOBAL VARIABLES\G' > ~/globalvar-$(date +%m-%d-%yT%H:%M).dump && cd; ls `pwd`/* |grep dump
+** Old Password
+SET session old_passwords = 0;
+SET old_passwords = 0;
+UPDATE mysql.user SET Password = PASSWORD('testpass') WHERE User = 'testuser' limit 1;
+SELECT LENGTH(Password) FROM mysql.user WHERE User = 'testuser';
+FLUSH PRIVILEGES;
+** Show Database Size
+SELECT table_schema "DB Name", Round(Sum(data_length + index_length) / 1024 / 1024, 1) "DB Size in MB" FROM information_schema.tables GROUP BY table_schema;
+*** Single DB
+SELECT  sum(round(((data_length + index_length) / 1024 / 1024 / 1024), 2))  as "Size in GB" FROM information_schema.TABLES  WHERE table_schema = "<database_name>"
+** Show Table Size
+SELECT 
+     table_schema as `Database`, 
+     table_name AS `Table`, 
+     round(((data_length + index_length) / 1024 / 1024), 2) `Size in MB` 
+FROM information_schema.TABLES 
+ORDER BY (data_length + index_length) DESC;
+** Magento Fix  DB sessions/cookies
+update core_config_data set value='' where path='web/cookie/cookie_path' or path='web/cookie/cookie_domain';
+** Enable querry logging in Magento
+https://blog.nexcess.net/2011/04/15/logging-database-queries-in-magento/
+** Show user privileges
+SHOW GRANTS FOR 'root'@'localhost';
+** Update a table from the command line
+update core_config_data set value = 'http://domainname/' where path = 'web/unsecure/base_url';
+update core_config_data set value = 'http://domainname/' where path = 'web/secure/base_url';
+** Kill Sleeping Queries
+x=$(m -e'show full processlist\G' | grep -B7 Sleep | grep Id  | cut -d ":" -f2); for i in $x; do m -e"kill $i";echo $i; done;
+* Nodeworx
+** Increase IP address limit
+Nodeworx -> Plugins -> Nexcess SSH Management
+* Optimize
+** Test Response Time
+1. Create a file called curl-format.txt
+    timelookup:  %{time_namelookup}\n
+    time_connect:  %{time_connect}\n
+    time_appconnect:  %{time_appconnect}\n
+    time_pretransfer:  %{time_pretransfer}\n
+    time_redirect:  %{time_redirect}\n
+    time_starttransfer:  %{time_starttransfer}\n
+                    ----------\n
+    time_total:  %{time_total}\
+2. Curl the domain
+curl -w "@curl-format.txt" -o /dev/null -s
+** TTFB Template email
+
+When we tested the TTFB from our location it is taking 657 ms, which is slightly slower that average.
+
+$ curl -w "@curl-format.txt" -o /dev/null -s salonfurniturewarehouse.com
+    timelookup:  0.028
+    time_connect:  0.029
+    time_appconnect:  0.000
+    time_pretransfer:  0.029
+    time_redirect:  0.000
+    time_starttransfer:  0.657
+                    ----------
+    time_total:  0.657
+
+It appears that you are using files for frontend caching and the database for sessions caching. On our SIP-200 and higher hosting plans we offer Redis and Memcached, which are known to improve a site's load time. You can reduce TTFB by sending as much of the html document as possible before doing any back-end processing, however this requires code and database optimization. Here is a link to a guide on optimizing the Magento code and DB to reduce TTFB.
+
+https://www.goivvy.com/blog/magento-optimization-reduce-time-first-byte-ttfb
+
+ Please see the following link for further suggestions on how  to optimize the page speed.
+
+https://varvy.com/pagespeed/
+
+- Joseph
+* Patch
+- For patch files with the file extension .sh: sh patch_file_name.sh
+- Example: sh PATCH_SUPEE-1868_CE_1.7.0.2_v1.sh
+- For patch files with the file extension .patch: patch –p0 < patch_file_name.patch
+* Permissions Fix
+find . -type d -exec chmod 2755 {} \; && find . -type f -exec chmod 664 {} \;
+* Phones
+- Answer: Hello Nexcess.net support this is Joe how can I help you?
+- Login: Dial 602, pick up, dial 9296#, hang up
+- Logout: Dial 602, pick up, hang up
+- Protocol dictates opening a ticket for each call.
+** Extensions
+- Billing: 600
+- Sales: 604
+- Jay: 250
+- Geoffrey: 251
+- Rigo: 252
+- ESG: 666
+- Jerries: 226
+- SSl: Lawrence
+- OTR phone for ASO stuff: 248-752-0441
+* PHP
+** Install OAuth for PHP 5.3
+pecl install oauth-1.2.3
+php_admin_value[extension] = oauth.so
+** Clear max children
+service php-fpm restart : 
+** Increase memory
+/etc/php-fpm.d/(username).conf
+** Enable compression
+php_admin_value[zlib.output_compression] = On
+** Increase Session Time
+php_admin_value[session.gc_maxlifetime] = 21600
+** Disable APC/Opcache  
+php_admin_value[apc.enabled] = Off
+php_admin_value[opcache.enable] = 0
+** PHP MAX_CHILDREN
+*** Place Code in index.php to set delay
+## BEGIN NEXCESS DEBUGING ##
+if ($_SERVER['REMOTE_ADDR'] == '192.240.191.2') {
+$file = fopen('/tmp/nexcessLsofFlag','w');
+sleep(5);
+fclose($file);
+}
+##   END NEXCESS DEBUGGING ##
+*** Strace command
+strace -o stracelog -ff -tt -p
+strace -fTtttvo ~/strac-php.$(date +%s) -s20000 -p$(lsof | grep /tmp/nexcessLsofFlag | awk '{print $2}')
+*** Sit and wait for max_children to hit 
+** Upgrading PHP
+copy current php-fpm pool config to:
+/opt/nexcess/phpVERSION/root/etc/php-fpm.d/
+
+clear out current php-fpm config in /etc/php-fpm.d/
+
+update their paths in the cron to PATH=/opt/nexcess/php55u/root/usr/bin:/opt/nexcess/php55u/root/usr/sbin:/usr/bin:/bin
+
+restart both php-fpm and the new php5x-fpm server
+** Bad PHP Upgrade
+add to the users .bashrc
+source /opt/nexcess/php54u/enable
+** Run a command with a different version of PHP
+scl enable php54u "command"
+** PHP file download
+<?php
+  if ($handle = opendir('.')) {
+    while (false !== ($file = readdir($handle))) {
+      if ($file != "." && $file != "..") {
+        $thelist .= '<li><a href="'.$file.'">'.$file.'</a></li>';
+      }
+    }
+    closedir($handle);
+  }
+?>
+<h1>List of files:</h1>
+<ul><?php echo $thelist; ?></ul>
+  
+* Questions
+- Are we using SNI for multiple SSLs on all SIP-100 servers?
+- If so do we require clients to upgrade to SIP-200 if they wish to purchase multiple IPs?
+- Can we create a script to restart php-fpm when it reaches max_children setting?
+* Reindex
+- cd shell ; sudo (username) php -f indexer.php --reindexall 
+* Research
+** Productivity
+- Yank: ctl-u
+- Paste: ctl-y
+*** Screen
+- Start Command: ctl-a
+- ESC: Navigate freely 
+- Enter: Start copying text, hit enter again to finish
+- }: Paste
+** Emacs Shell
+- Term: M-x term
+- Term-line-mode C-c C-j
+- Term-char-mode C-c C-k
+** Random
+- /etc/nexcess/.bash_rc
+- Write your own httpd server. Anti Web (Lisp Web Server)
+* Siteworx Restore
+https://dev.nexcess.net/siteworx-restores
+* Spam
+** Links
+http://www.paulgraham.com/spam.html
+https://spamassassin.apache.org/full/3.0.x/dist/doc/sa-learn.html
+* SSH
+** Whitelist IP
+vim /etc/hosts.allow : sshd: (IP address)
+** Whitelist on eeip 
+vim /etc/apf/allow_host.rules : dd=22:s=(IP address)
+** SSH Logs
+/var/log/secure
+** Show Login Attempts
+pam_tally2
+*** Resets Authentication
+-r <username>
+** Show Password
+nksshd userControl 'username' -p -s
+** SSH Keys 
+- Run these commands from the client
+- ssh-keygen -t rsa
+- ssh-copy-id user@<IP Address>
+- Manual method: cat ~/.ssh/id_rsa.pub | ssh user@123.45.56.78 "mkdir -p ~/.ssh && cat >>  ~/.ssh/authorized_keys"
+* SSL
+- After install SSL run: pupetd -t
+** To resend the SSL emial 
+go to www.secure128.com, sign in go to order history,
+select the account, change domain control validation, save, and resend.
+** Check encryption type on a SSL
+checksha1 () 
+{ 
+    openssl s_client -connect $1:443 < /dev/null 2> /dev/null | openssl x509 -text -in /dev/stdin | grep --color=auto "sha1"
+}
+
+checksha1 $domain
+** SSL Chain Order
+AddTrustExternalCARoot.crt
+COMODORSAAddTrustCA.crt
+COMODORSAExtendedValidationSecureServerCA.crt
+** Let's Encrypt Temporary SSL
+file:///home/jc/Web_Pages/How%20to%20provide%20temporary%20SSL%20certificates%20-%20Support%20-%20Nexcess%20Knowledge%20Base.html
+** Symantec Fucked Up - Chrome
+https://arstechnica.com/security/2017/03/google-takes-symantec-to-the-woodshed-for-mis-issuing-30000-https-certs/
+* Stock Replies
+** Contact not on file
+Hello,
+
+For security reasons, could you please respond from the email on file with this account. Alternatively, you can be added as a user. To add a user, log in to https://portal.nexcess.net and select "Team" from the drop down menu in he right hand corner. Click "Add Member" to the right of Team Members, and add your email address  create a new user. 
+
+Thank you,
+
+Joseph
+** Patch
+Thanks for reaching out. Due to the potential impact of this patch, we would highly recommend that this be handled by the development team for your installation.
+
+Please make sure your developers are aware of the new “Admin Routing Compatibility Mode” option introduced in this patch.  Magento has indicated that an active role from your developers (and potentially the authors of any modules you are using) may be required to comply with the full security features of this patch.  More information can be found at the below link:
+
+http://merch.docs.magento.com/ce/user_guide/magento/release-notes-ce-1.9.2.2.html
+
+If you or they have already reviewed this and have determined that we are OK to run the patch script from our end, please re-confirm and we’re happy to assist.  Once the patch has been successfully installed, it is advised to test the site with “Admin Routing Compatibility Mode” disabled.  The full security of this patch is only available when compatibility mode is disabled.  To safely do this, you may have to reach out to authors of 3rd party modules your store is using to make sure they have updated their module to work with this new patch.
+
+If you do not currently have an active development team and seem a bit overwhelmed by this patch, a list of our Magento development partners can be found below:
+
+https://www.nexcess.net/partners/magento-partners
+Of the recent patches Magento has distributed, this is the one that is most likely to require developer involvement.
+
+Please note that if we receive a response confirming that our team is OK to install this patch, it may be 24 - 72 hours until this has been confirmed to have been applied, given the higher-than-usual volume of requests we have received for assistance with this.
+
+Best regards,
+
+Joseph
+** Patch Failed
+We attempted to run the patch, but it appears that it may have failed due to some modification of core files. We’ve provided the error output below for your development team to review.
+
+{output from patch error in STDOUT}
+
+As stated previously, if you do not currently have an active development team, a list of our Magento development partners can be found below:
+
+https://www.nexcess.net/partners/magento-partners
+
+Please let us know if there’s any further information or assistance that we can provide. We’re happy to also run that once again after you believe the issue to be fixed.
+
+Best regards,
+
+Joseph
+** Patch Completed
+The patch has been successfully applied. Please be aware that the “Admin Routing Compatibility Mode” is currently enabled and can be disabled by your team by following the instructions under the “Admin Routing Compatibility Mode” of the page linked below:
+
+http://merch.docs.magento.com/ce/user_guide/magento/release-notes-ce-1.9.2.2.html
+
+You may not be able to safely disable "Admin Routing Compatibility Mode" until the 3rd party modules that your store relies on have been updated to be compliant with this new patch.  We advise working with your development team to test this and consult with the authors of any modules that need to be updated so that you can safely disable compatibility mode.  The full security features of this patch are NOT active while compatibility mode is enabled.
+
+As stated previously, if you do not currently have an active development team, a list of our Magento development partners can be found below:
+
+https://www.nexcess.net/partners/magento-partners
+
+If you run into problems disabling compatibility mode, developer assistance is most likely a requirement to make your site compliant with this latest patch.
+
+If there is any further information or assistance that we can provide, please let us know and we’re happy to assist as best we can.
+
+Best regards,
+
+Joseph
+** Patch Dev
+Sounds great! We’ll close out this ticket but please let us know if you need any further assistance and we’re happy to help as best we can.
+
+Best regards,
+
+Joseph
+* Wordpress
+** Install Wordpress
+nkwordpress install -a -U <user> -N <database>
+** Change Blog Password
+Edit /html/blog/wp-config.php to match phpmyadmin wp database password.
+** Sets a new URL if the current URL is incorrect
+ mysql> update wp_options set option_value='(URL)'WHERE option_id=1
+ update wp_options set option_value='(URL)'WHERE option_id=36;
+ update wp_options set option_value='(URL)'WHERE o
+** Mult-Site
+- Add to the top of wp-config.php
+/* Multi-site */
+define( 'WP_ALLOW_MULTISITE', true );
+
+/* Network Multie-site */
+define('MULTISITE', true);
+define('SUBDOMAIN_INSTALL', true);
+define('DOMAIN_CURRENT_SITE', 'level.gg');
+define('PATH_CURRENT_SITE', '/');
+define('SITE_ID_CURRENT_SITE', 1);
+define('BLOG_ID_CURRENT_SITE', 1);
+** Disable W3TC
+First, delete all cache and deactivate the W3 Total Cache plugin.
+Delete the W3 Total Cache plugin from the Wp-content/plugins folder.
+Remove this line from Wp-config file – (define(‘WP_CACHE’, true) )
+Delete advanced-cache.php, db.php, wp-total-cache-config.php, and delete the entire w3tc folder from the Wp-content folder.
+Check the .htaccess file; if you see any code added by W3 Total Cache, remove it.
+* ToDo
+- Caching is all the rage these days
+- hijackthis in safe mode to remove ppu
+* Verification
+If the client does not have have access to the PIN, is not on the account, and indicates the Superuser is no longer with the company, use the following procedure to grant the client
+access: Ask the client to send a notarizedletter on company letterhead indicating they are permitted to be added to the account. The notarized letter should include:
+
+Attention: Emphasize the requirement for a notarized letter as we do not accept them otherwise.
+
+Name of the individual making the request
+
+Email address
+
+Company address
+
+Date
+
+Statement indicating the person is permitted to be added to the account and/or remove the current Superuser
+
+Signature of individual making request
+
+Copy of license, state ID, or passport. If the documents are two-sided, we require a copy of both sides
+
+Credit card (both sides), check stub, or PayPal transaction of last account payment
+
+b.  Request an email address from the client and send the NOCWorx stock reply Account Verification - Letterhead.
+Do not create the ticket on the account in question.
+
+Always enter the company name of the account where it is mentioned in the reply.
+
+c.  Transfer the ticket to the Billing Team. The account will be updated once the letter has been received.
+
+- See more at: https://docs.nexcess.net/secure/how-to-verify-client-identity.html#sthash.3i0afkI4.dpuf
+* Member ID
+xyq915273779
+U: jodaozen
+P: T!gers51
+* Nocworx
+accepts:{script:"text/javascript, application/javascript, application/ecmascript, application/x-ecmascript"},contents:{script:/(?:java|ecma)script/},converters:{"text script":function(a){return _.globalEval(a),a}}}),_.ajaxPrefilter("script",function(a){void 0===a.cache&&(a.cache=!1),a.crossDomain&&(a.type="GET")}),_.ajaxTransport("script",function(a){if(a.crossDomain){var b,c;return{send:function(d,e){b=_("<script>").prop({async:!0,charset:a.scriptCharset,src:a.url}).on("load error",c=function(a){b.remove(),c=null,a&&e("error"===a.type?404:200,a.type)}),Z.head.appendChild(b[0])},abort:function(){c&&c()}}}});var Gb=[],Hb=/(=)\?(?=&|$)|\?\?/;_.ajaxSetup({jsonp:"callback",jsonpCallback:function(){var a=Gb.pop()||_.expando+"_"+jb++;return this[a]=!0,a}}),_.ajaxPrefilter("json jsonp",function(b,c,d){var e,f,g,h=b.jsonp!==!1&&(Hb.test(b.url)?"url":"string"==typeof b.data&&!(b.contentType||"").indexOf("application/x-www-form-urlencoded")&&Hb.test(b.data)&&"data");return h||"jsonp"===b.dataTypes[0]?(e=b.jsonpCallback=_.isFunction(b.jsonpCallback)?b.jsonpCallback():b.jsonpCallback,h?b[h]=b[h].replace(Hb,"$1"+e):b.jsonp!==!1&&(b.url+=(kb.test(b.url)?"&":"?")+b.jsonp+"="+e),b.converters["script json"]=function(){return g||_.error(e+" was not called"),g[0]},b.dataTypes[0]="json",f=a[e],a[e]=function(){g=arguments},d.always(function(){a[e]=f,b[e]&&(b.jsonpCallback=c.jsonpCallback,Gb.push(e)),g&&_.isFunction(f)&&f(g[0]),g=f=void 0}),"script"):void 0}),_.parseHTML=function(a,b,c){if(!a||"string"!=typeof a)return null;"boolean"==typeof b&&(c=b,b=!1),b=b||Z;var d=ga.exec(a),e=!c&&[];return d?[b.createElement(d[1])]:(d=_.buildFragment([a],b,e),e&&e.length&&_(e).remove(),_.merge([],d.childNodes))};var Ib=_.fn.load;_.fn.load=function(a,b,c){if("string"!=typeof a&&Ib)return Ib.apply(this,arguments);var d,e,f,g=this,h=a.indexOf(" ");return h>=0&&(d=_.trim(a.slice(h)),a=a.slice(0,h)),_.isFunction(b)?(c=b,b=void 0):b&&"object"==typeof b&&(e="POST"),g.length>0&&_.ajax({url:a,type:e,dataType:"html",data:b}).done(function(a){f=arguments,g.html(d?_("<div>").append(_.parseHTML(a)).find(d):a)}).complete(c&&function(a,b){g.each(c,f||[a.responseText,b,a])}),this},_.each(["ajaxStart","ajaxStop","ajaxComplete","ajaxError","ajaxSuccess","ajaxSend"],function(a,b){_.fn[b]=function(a){return this.on(b,a)}}),_.expr.filters.animated=function(a){return _.grep(_.timers,function(b){return a===b.elem}).length};var Jb=a.document.documentElement;_.offset={setOffset:function(a,b,c){var d,e,f,g,h,i,j,k=_.css(a,"position"),l=_(a),m={};"static"===k&&(a.style.position="relative"),h=l.offset(),f=_.css(a,"top"),i=_.css(a,"left"),j=("absolute"===k||"fixed"===k)&&(f+i).indexOf("auto")>-1,j?(d=l.position(),g=d.top,e=d.left):(g=parseFloat(f)||0,e=parseFloat(i)||0),_.isFunction(b)&&(b=b.call(a,c,h)),null!=b.top&&(m.top=b.top-h.top+g),null!=b.left&&(m.left=b.left-h.left+e),"using"in b?b.using.call(a,m):l.css(m)}},_.fn.extend({offset:function(a){if(arguments.length)return void 0===a?this:this.each(function(b){_.offset.setOffset(this,a,b)});var b,c,d=this[0],e={top:0,left:0},f=d&&d.ownerDocument;if(f)return b=f.documentElement,_.contains(b,d)?(typeof d.getBoundingClientRect!==za&&(e=d.getBoundingClientRect()),c=P(f),{top:e.top+c.pageYOffset-b.clientTop,left:e.left+c.pageXOffset-b.clientLeft}):e},position:function(){if(this[0]){var a,b,c=this[0],d={top:0,left:0};return"fixed"===_.css(c,"position")?b=c.getBoundingClientRect():(a=this.offsetParent(),b=this.offset(),_.nodeName(a[0],"html")||(d=a.offset()),d.top+=_.css(a[0],"borderTopWidth",!0),d.left+=_.css(a[0],"borderLeftWidth",!0)),{top:b.top-d.top-_.css(c,"marginTop",!0),left:b.left-d.left-_.css(c,"marginLeft",!0)}}},offsetParent:function(){return this.map(function(){for(var a=this.offsetParent||Jb;a&&!_.nodeName(a,"html")&&"static"===_.css(a,"position");)a=a.offsetParent;return a||Jb})}}),_.each({scrollLeft:"pageXOffset",scrollTop:"pageYOffset"},function(b,c){var d="pageYOffset"===c;_.fn[b]=function(e){return qa(this,function(b,e,f){var g=P(b);return void 0===f?g?g[c]:b[e]:void(g?g.scrollTo(d?a.pageXOffset:f,d?f:a.pageYOffset):b[e]=f)},b,e,arguments.length,null)}}),_.each(["top","left"],function(a,b){_.cssHooks[b]=w(Y.pixelPosition,function(a,c){return c?(c=v(a,b),Qa.test(c)?_(a).position()[b]+"px":c):void 0})}),_.each({Height:"height",Width:"width"},function(a,b){_.each({padding:"inner"+a,content:b,"":"outer"+a},function(c,d){_.fn[d]=function(d,e){var f=arguments.length&&(c||"boolean"!=typeof d),g=c||(d===!0||e===!0?"margin":"border");return qa(this,function(b,c,d){var e;return _.isWindow(b)?b.document.documentElement["client"+a]:9===b.nodeType?(e=b.documentElement,Math.max(b.body["scroll"+a],e["scroll"+a],b.body["offset"+a],e["offset"+a],e["client"+a])):void 0===d?_.css(b,c,g):_.style(b,c,d,g)},b,f?d:void 0,f,null)}})}),_.fn.size=function(){return this.length},_.fn.andSelf=_.fn.addBack,"function"==typeof define&&define.amd&&define("jquery",[],function(){return _});var Kb=a.jQuery,Lb=a.$;return _.noConflict=function(b){return a.$===_&&(a.$=Lb),b&&a.jQuery===_&&(a.jQuery=Kb),_},typeof b===za&&(a.jQuery=a.$=_),_}),function(a){function b(a){var b=function(a,c){var e=f({},b,c||{});return d(a,e)};return f(b,{language:"en",delimiter:", ",spacer:" ",units:["y","mo","w","d","h","m","s"],languages:{},round:!1,unitMeasures:{y:315576e5,mo:26298e5,w:6048e5,d:864e5,h:36e5,m:6e4,s:1e3,ms:1}},a)}function c(){return k.apply(k,arguments)}function d(a,b){a=Math.abs(a);var c=b.languages[b.language]||j[b.language];if(!c)throw new Error("No language "+c+".");for(var d,f,g,h=[],i=0,k=b.units.length;k>i&&(d=b.units[i],f=b.unitMeasures[d],i+1===k?(g=a/f,b.round&&(g=Math.round(g))):g=Math.floor(a/f),g&&h.push(e(g,d,c,b)),!(b.largest&&b.largest<=h.length));i++)a-=g*f;return h.length?h.join(b.delimiter):e(0,b.units[b.units.length-1],c,b)}function e(a,b,c,d){var e;e=void 0===d.decimal?c.decimal:d.decimal;var f,g=a.toString().replace(".",e),h=c[b];return f="function"==typeof h?h(a):h,g+d.spacer+f}function f(a){for(var b,c=1;c<arguments.length;c++){b=arguments[c];for(var d in b)b.hasOwnProperty(d)&&(a[d]=b[d])}return a}function g(a){return 1===a?0:Math.floor(a)!==a?1:a%10>=2&&4>=a%10&&!(a%100>10&&20>a%100)?2:3}function h(a){return Math.floor(a)!==a?2:0===a||a>=5&&20>=a||a%10>=5&&9>=a%10||a%10===0?0:1===a||a%10===1?1:a>1?2:0}function i(){var a=[];for(var b in j)j.hasOwnProperty(b)&&a.push(b);return a}var j={ar:{y:function(a){return 1===a?"سنة":"سنوات"},mo:function(a){return 1===a?"شهر":"أشهر"},w:function(a){return 1===a?"أسبوع":"أسابيع"},d:function(a){return 1===a?"يوم":"أيام"},h:function(a){return 1===a?"ساعة":"ساعات"},m:function(a){return 1===a?"دقيقة":"دقائق"},s:function(a){return 1===a?"ثانية":"ثواني"},ms:function(a){return 1===a?"جزء من الثانية":"أجزاء من الثانية"},decimal:","},ca:{y:function(a){return"any"+(1!==a?"s":"")},mo:function(a){return"mes"+(1!==a?"os":"")},w:function(a){return"setman"+(1!==a?"es":"a")},d:function(a){return"di"+(1!==a?"es":"a")},h:function(a){return"hor"+(1!==a?"es":"a")},m:function(a){return"minut"+(1!==a?"s":"")},s:function(a){return"segon"+(1!==a?"s":"")},ms:function(a){return"milisegon"+(1!==a?"s":"")},decimal:","},da:{y:"år",mo:function(a){return"måned"+(1!==a?"er":"")},w:function(a){return"uge"+(1!==a?"r":"")},d:function(a){return"dag"+(1!==a?"e":"")},h:function(a){return"time"+(1!==a?"r":"")},m:function(a){return"minut"+(1!==a?"ter":"")},s:function(a){return"sekund"+(1!==a?"er":"")},ms:function(a){return"millisekund"+(1!==a?"er":"")},decimal:","},de:{y:function(a){return"Jahr"+(1!==a?"e":"")},mo:function(a){return"Monat"+(1!==a?"e":"")},w:function(a){return"Woche"+(1!==a?"n":"")},d:function(a){return"Tag"+(1!==a?"e":"")},h:function(a){return"Stunde"+(1!==a?"n":"")},m:function(a){return"Minute"+(1!==a?"n":"")},s:function(a){return"Sekunde"+(1!==a?"n":"")},ms:function(a){return"Millisekunde"+(1!==a?"n":"")},decimal:","},en:{y:function(a){return"year"+(1!==a?"s":"")},mo:function(a){return"month"+(1!==a?"s":"")},w:function(a){return"week"+(1!==a?"s":"")},d:function(a){return"day"+(1!==a?"s":"")},h:function(a){return"hour"+(1!==a?"s":"")},m:function(a){return"minute"+(1!==a?"s":"")},s:function(a){return"second"+(1!==a?"s":"")},ms:function(a){return"millisecond"+(1!==a?"s":"")},decimal:"."},es:{y:function(a){return"año"+(1!==a?"s":"")},mo:function(a){return"mes"+(1!==a?"es":"")},w:function(a){return"semana"+(1!==a?"s":"")},d:function(a){return"día"+(1!==a?"s":"")},h:function(a){return"hora"+(1!==a?"s":"")},m:function(a){return"minuto"+(1!==a?"s":"")},s:function(a){return"segundo"+(1!==a?"s":"")},ms:function(a){return"milisegundo"+(1!==a?"s":"")},decimal:","},fr:{y:function(a){return"an"+(1!==a?"s":"")},mo:"mois",w:function(a){return"semaine"+(1!==a?"s":"")},d:function(a){return"jour"+(1!==a?"s":"")},h:function(a){return"heure"+(1!==a?"s":"")},m:function(a){return"minute"+(1!==a?"s":"")},s:function(a){return"seconde"+(1!==a?"s":"")},ms:function(a){return"milliseconde"+(1!==a?"s":"")},decimal:","},gr:{y:function(a){return 1===a?"χρόνος":"χρόνια"},mo:function(a){return 1===a?"μήνας":"μήνες"},w:function(a){return 1===a?"εβδομάδα":"εβδομάδες"},d:function(a){return 1===a?"μέρα":"μέρες"},h:function(a){return 1===a?"ώρα":"ώρες"},m:function(a){return 1===a?"λεπτό":"λεπτά"},s:function(a){return 1===a?"δευτερόλεπτο":"δευτερόλεπτα"},ms:function(a){return 1===a?"χιλιοστό του δευτερολέπτου":"χιλιοστά του δευτερολέπτου"},decimal:","},hu:{y:"év",mo:"hónap",w:"hét",d:"nap",h:"óra",m:"perc",s:"másodperc",ms:"ezredmásodperc",decimal:","},it:{y:function(a){return"ann"+(1!==a?"i":"o")},mo:function(a){return"mes"+(1!==a?"i":"e")},w:function(a){return"settiman"+(1!==a?"e":"a")},d:function(a){return"giorn"+(1!==a?"i":"o")},h:function(a){return"or"+(1!==a?"e":"a")},m:function(a){return"minut"+(1!==a?"i":"o")},s:function(a){return"second"+(1!==a?"i":"o")},ms:function(a){return"millisecond"+(1!==a?"i":"o")},decimal:","},ja:{y:"年",mo:"月",w:"週",d:"日",h:"時間",m:"分",s:"秒",ms:"ミリ秒",decimal:"."},ko:{y:"년",mo:"개월",w:"주일",d:"일",h:"시간",m:"분",s:"초",ms:"밀리 초",decimal:"."},nl:{y:"jaar",mo:function(a){return 1===a?"maand":"maanden"},w:function(a){return 1===a?"week":"weken"},d:function(a){return 1===a?"dag":"dagen"},h:"uur",m:function(a){return 1===a?"minuut":"minuten"},s:function(a){return 1===a?"seconde":"seconden"},ms:function(a){return 1===a?"milliseconde":"milliseconden"},decimal:","},no:{y:"år",mo:function(a){return"måned"+(1!==a?"er":"")},w:function(a){return"uke"+(1!==a?"r":"")},d:function(a){return"dag"+(1!==a?"er":"")},h:function(a){return"time"+(1!==a?"r":"")},m:function(a){return"minutt"+(1!==a?"er":"")},s:function(a){return"sekund"+(1!==a?"er":"")},ms:function(a){return"millisekund"+(1!==a?"er":"")},decimal:","},pl:{y:function(a){return["rok","roku","lata","lat"][g(a)]},mo:function(a){return["miesiąc","miesiąca","miesiące","miesięcy"][g(a)]},w:function(a){return["tydzień","tygodnia","tygodnie","tygodni"][g(a)]},d:function(a){return["dzień","dnia","dni","dni"][g(a)]},h:function(a){return["godzina","godziny","godziny","godzin"][g(a)]},m:function(a){return["minuta","minuty","minuty","minut"][g(a)]},s:function(a){return["sekunda","sekundy","sekundy","sekund"][g(a)]},ms:function(a){return["milisekunda","milisekundy","milisekundy","milisekund"][g(a)]},decimal:","},pt:{y:function(a){return"ano"+(1!==a?"s":"")},mo:function(a){return 1!==a?"meses":"mês"},w:function(a){return"semana"+(1!==a?"s":"")},d:function(a){return"dia"+(1!==a?"s":"")},h:function(a){return"hora"+(1!==a?"s":"")},m:function(a){return"minuto"+(1!==a?"s":"")},s:function(a){return"segundo"+(1!==a?"s":"")},ms:function(a){return"milissegundo"+(1!==a?"s":"")},decimal:","},ru:{y:function(a){return["лет","год","года"][h(a)]},mo:function(a){return["месяцев","месяц","месяца"][h(a)]},w:function(a){return["недель","неделя","недели"][h(a)]},d:function(a){return["дней","день","дня"][h(a)]},h:function(a){return["часов","час","часа"][h(a)]},m:function(a){return["минут","минута","минуты"][h(a)]},s:function(a){return["секунд","секунда","секунды"][h(a)]},ms:function(a){return["миллисекунд","миллисекунда","миллисекунды"][h(a)]},decimal:","},uk:{y:function(a){return["років","рік","роки"][h(a)]},mo:function(a){return["місяців","місяць","місяці"][h(a)]},w:function(a){return["неділь","неділя","неділі"][h(a)]},d:function(a){return["днів","день","дні"][h(a)]},h:function(a){return["годин","година","години"][h(a)]},m:function(a){return["хвилин","хвилина","хвилини"][h(a)]},s:function(a){return["секунд","секунда","секунди"][h(a)]},ms:function(a){return["мілісекунд","мілісекунда","мілісекунди"][h(a)]},decimal:","},sv:{y:"år",mo:function(a){return"månad"+(1!==a?"er":"")},w:function(a){return"veck"+(1!==a?"or":"a")},d:function(a){return"dag"+(1!==a?"ar":"")},h:function(a){return"timm"+(1!==a?"ar":"e")},m:function(a){return"minut"+(1!==a?"er":"")},s:function(a){return"sekund"+(1!==a?"er":"")},ms:function(a){return"millisekund"+(1!==a?"er":"")},decimal:","},tr:{y:"yıl",mo:"ay",w:"hafta",d:"gün",h:"saat",m:"dakika",s:"saniye",ms:"milisaniye",decimal:","},zh_CN:{y:"年",mo:"个月",w:"周",d:"天",h:"小时",m:"分钟",s:"秒",ms:"毫秒",decimal:"."},zh_TW:{y:"年",mo:"個月",w:"周",d:"天",h:"小時",m:"分鐘",s:"秒",ms:"毫秒",decimal:"."}},k=b({});c.humanizer=b,c.getSupportedLanguages=i,"function"==typeof define&&define.amd?define(function(){return c}):"undefined"!=typeof module&&module.exports?module.exports=c:a.humanizeDuration=c}(this),function(a,b){"use strict";a.ajaxPrefilter(function(a,b,c){return a.iframe?(a.originalURL=a.url,"iframe"):void 0}),a.ajaxTransport("iframe",function(b,c,d){function e(){i.each(function(b,c){var d=a(c);d.data("clone").replaceWith(d)}),f.remove(),g.one("load",function(){g.remove()}),g.attr("src","javascript:false;")}var f=null,g=null,h="iframe-"+a.now(),i=a(b.files).filter(":file:enabled"),j=null,k=null;return b.dataTypes.shift(),b.data=c.data,i.length?(f=a("<form enctype='multipart/form-data' method='post'></form>").hide().attr({action:b.originalURL,target:h}),"string"==typeof b.data&&b.data.length>0&&a.error("data must not be serialized"),a.each(b.data||{},function(b,c){a.isPlainObject(c)&&(b=c.name,c=c.value),a("<input type='hidden' />").attr({name:b,value:c}).appendTo(f)}),a("<input type='hidden' value='IFrame' name='X-Requested-With' />").appendTo(f),k=b.dataTypes[0]&&b.accepts[b.dataTypes[0]]?b.accepts[b.dataTypes[0]]+("*"!==b.dataTypes[0]?", */*; q=0.01":""):b.accepts["*"],a("<input type='hidden' name='X-HTTP-Accept'>").attr("value",k).appendTo(f),j=i.after(function(b){var c=a(this),d=c.clone().prop("disabled",!0);return c.data("clone",d),d}).next(),i.appendTo(f),{send:function(b,c){g=a("<iframe src='javascript:false;' name='"+h+"' id='"+h+"' style='display:none'></iframe>"),g.one("load",function(){g.one("load",function(){var a=this.contentWindow?this.contentWindow.document:this.contentDocument?this.contentDocument:this.document,b=a.documentElement?a.documentElement:a.body,d=b.getElementsByTagName("textarea")[0],f=d&&d.getAttribute("data-type")||null,g=d&&d.getAttribute("data-status")||200,h=d&&d.getAttribute("data-statusText")||"OK",i={html:b.innerHTML,text:f?d.value:b?b.textContent||b.innerText:null};e(),c(g,h,i,f?"Content-Type: "+f:null)}),f[0].submit()}),a("body").append(f,g)},abort:function(){null!==g&&(g.unbind("load").attr("src","javascript:false;"),e())}}):void 0})}(jQuery),!function(a,b,c){"use strict";function d(a,b){this._defaults=e,this.element=a,this.setOptions(b),this.init()}var e={tagName:"a",newLine:"\n",target:"_blank",linkClass:null,linkClasses:[],linkAttributes:null};d.prototype={constructor:d,init:function(){1===this.element.nodeType?d.linkifyNode.call(this,this.element):this.element=d.linkify.call(this,this.element.toString())},setOptions:function(a){this.settings=d.extendSettings(a,this.settings)},toString:function(){return this.element.toString()}},d.extendSettings=function(a,b){var c;b=b||{};for(c in e)b[c]||(b[c]=e[c]);for(c in a)b[c]=a[c];return b},d.linkMatch=new RegExp(["(",'\\s|[^a-zA-Z0-9.\\+_\\/"\\>\\-]|^',")(?:","(","[a-zA-Z0-9\\+_\\-]+","(?:","\\.[a-zA-Z0-9\\+_\\-]+",")*@",")?(","http:\\/\\/|https:\\/\\/|ftp:\\/\\/",")?(","(?:(?:[a-z0-9][a-z0-9_%\\-_+]*\\.)+)",")(","(?:com|ca|co|edu|gov|net|org|dev|biz|cat|int|pro|tel|mil|aero|asia|coop|info|jobs|mobi|museum|name|post|travel|local|[a-z]{2})",")(","(?::\\d{1,5})",")?(","(?:","[\\/|\\?]","(?:","[\\-a-zA-Z0-9_%#*&+=~!?,;:.\\/]*",")*",")","[\\-\\/a-zA-Z0-9_%#*&+=~]","|","\\/?",")?",")(",'[^a-zA-Z0-9\\+_\\/"\\<\\-]|$',")"].join(""),"g"),d.emailLinkMatch=/(<[a-z]+ href=\")(http:\/\/)([a-zA-Z0-9\+_\-]+(?:\.[a-zA-Z0-9\+_\-]+)*@)/g,d.linkify=function(a,b){var c,e,f,g=[];this.constructor===d&&this.settings?(e=this.settings,b&&(e=d.extendSettings(b,e))):e=d.extendSettings(b),f=e.linkClass?e.linkClass.split(/\s+/):[],f.push.apply(f,e.linkClasses),a=a.replace(/</g,"&lt;").replace(/(\s)/g,"$1$1"),g.push("$1<"+e.tagName,'href="http://$2$4$5$6$7"'),g.push('class="linkified'+(f.length>0?" "+f.join(" "):"")+'"'),e.target&&g.push('target="'+e.target+'"');for(c in e.linkAttributes)g.push([c,'="',e.linkAttributes[c].replace(/\"/g,"&quot;").replace(/\$/g,"&#36;"),'"'].join(""));return g.push(">$2$3$4$5$6$7</"+e.tagName+">$8"),a=a.replace(d.linkMatch,g.join(" ")),a=a.replace(d.emailLinkMatch,"$1mailto:$3"),a=a.replace(/(\s){2}/g,"$1"),a=a.replace(/\n/g,e.newLine)},d.linkifyNode=function(a){var b,e,f,g,h;if(a&&"object"==typeof a&&1===a.nodeType&&"a"!==a.tagName.toLowerCase()&&!/[^\s]linkified[\s$]/.test(a.className)){for(b=[],g=d._dummyElement||c.createElement("div"),e=a.firstChild,f=a.childElementCount;e;){if(3===e.nodeType){for(;g.firstChild;)g.removeChild(g.firstChild);for(g.innerHTML=d.linkify.call(this,e.textContent||e.innerText||e.nodeValue),b.push.apply(b,g.childNodes);g.firstChild;)g.removeChild(g.firstChild)}else b.push(1===e.nodeType?d.linkifyNode.call(this,e):e);e=e.nextSibling}for(;a.firstChild;)a.removeChild(a.firstChild);for(h=0;h<b.length;h++)a.appendChild(b[h])}return a},d._dummyElement=c.createElement("div"),a.fn.linkify=function(b){return this.each(function(){var c;(c=a.data(this,"plugin-linkify"))?(c.setOptions(b),c.init()):a.data(this,"plugin-linkify",new d(this,b))})},a.fn.linkify.Constructor=d,a(b).on("load",function(){a("[data-linkify]").each(function(){var b,c=a(this),d=c.attr("data-linkify"),e={tagName:c.attr("data-linkify-tagname"),newLine:c.attr("data-linkify-newline"),target:c.attr("data-linkify-target"),linkClass:c.attr("data-linkify-linkclass")};for(var f in e)"undefined"==typeof e[f]&&delete e[f];b="this"===d?c:c.find(d),b.linkify(e)})}),a("body").on("click",".linkified",function(){var c=a(this),d=c.attr("href"),e=/^mailto:/i.test(d),f=c.attr("target");return e?b.location.href=d:b.open(d,f),!1})}(jQuery,window,document),function(a){"function"==typeof define&&define.amd?define(["jquery"],a):a(jQuery)}(function(a){function b(b,d){var e,f,g,h=b.nodeName.toLowerCase();return"area"===h?(e=b.parentNode,f=e.name,b.href&&f&&"map"===e.nodeName.toLowerCase()?(g=a("img[usemap='#"+f+"']")[0],!!g&&c(g)):!1):(/^(input|select|textarea|button|object)$/.test(h)?!b.disabled:"a"===h?b.href||d:d)&&c(b)}function c(b){return a.expr.filters.visible(b)&&!a(b).parents().addBack().filter(function(){return"hidden"===a.css(this,"visibility")}).length}function d(a){for(var b,c;a.length&&a[0]!==document;){if(b=a.css("position"),("absolute"===b||"relative"===b||"fixed"===b)&&(c=parseInt(a.css("zIndex"),10),!isNaN(c)&&0!==c))return c;a=a.parent()}return 0}function e(){this._curInst=null,this._keyEvent=!1,this._disabledInputs=[],this._datepickerShowing=!1,this._inDialog=!1,this._mainDivId="ui-datepicker-div",this._inlineClass="ui-datepicker-inline",this._appendClass="ui-datepicker-append",this._triggerClass="ui-datepicker-trigger",this._dialogClass="ui-datepicker-dialog",this._disableClass="ui-datepicker-disabled",this._unselectableClass="ui-datepicker-unselectable",this._currentClass="ui-datepicker-current-day",this._dayOverClass="ui-datepicker-days-cell-over",this.regional=[],this.regional[""]={closeText:"Done",prevText:"Prev",nextText:"Next",currentText:"Today",monthNames:["January","February","March","April","May","June","July","August","September","October","November","December"],monthNamesShort:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],dayNames:["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],dayNamesShort:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],dayNamesMin:["Su","Mo","Tu","We","Th","Fr","Sa"],weekHeader:"Wk",dateFormat:"mm/dd/yy",firstDay:0,isRTL:!1,showMonthAfterYear:!1,yearSuffix:""},this._defaults={showOn:"focus",showAnim:"fadeIn",showOptions:{},defaultDate:null,appendText:"",buttonText:"...",buttonImage:"",buttonImageOnly:!1,hideIfNoPrevNext:!1,navigationAsDateFormat:!1,gotoCurrent:!1,changeMonth:!1,changeYear:!1,yearRange:"c-10:c+10",showOtherMonths:!1,selectOtherMonths:!1,showWeek:!1,calculateWeek:this.iso8601Week,shortYearCutoff:"+10",minDate:null,maxDate:null,duration:"fast",beforeShowDay:null,beforeShow:null,onSelect:null,onChangeMonthYear:null,onClose:null,numberOfMonths:1,showCurrentAtPos:0,stepMonths:1,stepBigMonths:12,altField:"",altFormat:"",constrainInput:!0,showButtonPanel:!1,autoSize:!1,disabled:!1},a.extend(this._defaults,this.regional[""]),this.regional.en=a.extend(!0,{},this.regional[""]),this.regional["en-US"]=a.extend(!0,{},this.regional.en),this.dpDiv=f(a("<div id='"+this._mainDivId+"' class='ui-datepicker ui-widget ui-widget-content ui-helper-clearfix ui-corner-all'></div>"))}function f(b){var c="button, .ui-datepicker-prev, .ui-datepicker-next, .ui-datepicker-calendar td a";return b.delegate(c,"mouseout",function(){a(this).removeClass("ui-state-hover"),-1!==this.className.indexOf("ui-datepicker-prev")&&a(this).removeClass("ui-datepicker-prev-hover"),-1!==this.className.indexOf("ui-datepicker-next")&&a(this).removeClass("ui-datepicker-next-hover")}).delegate(c,"mouseover",g)}function g(){a.datepicker._isDisabledDatepicker(r.inline?r.dpDiv.parent()[0]:r.input[0])||(a(this).parents(".ui-datepicker-calendar").find("a").removeClass("ui-state-hover"),a(this).addClass("ui-state-hover"),-1!==this.className.indexOf("ui-datepicker-prev")&&a(this).addClass("ui-datepicker-prev-hover"),-1!==this.className.indexOf("ui-datepicker-next")&&a(this).addClass("ui-datepicker-next-hover"))}function h(b,c){a.extend(b,c);for(var d in c)null==c[d]&&(b[d]=c[d]);return b}function i(a){return function(){var b=this.element.val();a.apply(this,arguments),this._refresh(),b!==this.element.val()&&this._trigger("change")}}a.ui=a.ui||{},a.extend(a.ui,{version:"1.11.4",keyCode:{BACKSPACE:8,COMMA:188,DELETE:46,DOWN:40,END:35,ENTER:13,ESCAPE:27,HOME:36,LEFT:37,PAGE_DOWN:34,PAGE_UP:33,PERIOD:190,RIGHT:39,SPACE:32,TAB:9,UP:38}}),a.fn.extend({scrollParent:function(b){var c=this.css("position"),d="absolute"===c,e=b?/(auto|scroll|hidden)/:/(auto|scroll)/,f=this.parents().filter(function(){var b=a(this);return d&&"static"===b.css("position")?!1:e.test(b.css("overflow")+b.css("overflow-y")+b.css("overflow-x"))}).eq(0);return"fixed"!==c&&f.length?f:a(this[0].ownerDocument||document)},uniqueId:function(){var a=0;return function(){return this.each(function(){this.id||(this.id="ui-id-"+ ++a)})}}(),removeUniqueId:function(){return this.each(function(){/^ui-id-\d+$/.test(this.id)&&a(this).removeAttr("id")})}}),a.extend(a.expr[":"],{data:a.expr.createPseudo?a.expr.createPseudo(function(b){return function(c){return!!a.data(c,b)}}):function(b,c,d){return!!a.data(b,d[3])},focusable:function(c){return b(c,!isNaN(a.attr(c,"tabindex")))},tabbable:function(c){var d=a.attr(c,"tabindex"),e=isNaN(d);return(e||d>=0)&&b(c,!e)}}),a("<a>").outerWidth(1).jquery||a.each(["Width","Height"],function(b,c){function d(b,c,d,f){return a.each(e,function(){c-=parseFloat(a.css(b,"padding"+this))||0,d&&(c-=parseFloat(a.css(b,"border"+this+"Width"))||0),f&&(c-=parseFloat(a.css(b,"margin"+this))||0)}),c}var e="Width"===c?["Left","Right"]:["Top","Bottom"],f=c.toLowerCase(),g={innerWidth:a.fn.innerWidth,innerHeight:a.fn.innerHeight,outerWidth:a.fn.outerWidth,outerHeight:a.fn.outerHeight};a.fn["inner"+c]=function(b){return void 0===b?g["inner"+c].call(this):this.each(function(){a(this).css(f,d(this,b)+"px")})},a.fn["outer"+c]=function(b,e){return"number"!=typeof b?g["outer"+c].call(this,b):this.each(function(){a(this).css(f,d(this,b,!0,e)+"px")})}}),a.fn.addBack||(a.fn.addBack=function(a){return this.add(null==a?this.prevObject:this.prevObject.filter(a))}),a("<a>").data("a-b","a").removeData("a-b").data("a-b")&&(a.fn.removeData=function(b){return function(c){return arguments.length?b.call(this,a.camelCase(c)):b.call(this)}}(a.fn.removeData)),a.ui.ie=!!/msie [\w.]+/.exec(navigator.userAgent.toLowerCase()),a.fn.extend({focus:function(b){return function(c,d){return"number"==typeof c?this.each(function(){var b=this;setTimeout(function(){a(b).focus(),d&&d.call(b)},c)}):b.apply(this,arguments)}}(a.fn.focus),disableSelection:function(){var a="onselectstart"in document.createElement("div")?"selectstart":"mousedown";return function(){return this.bind(a+".ui-disableSelection",function(a){a.preventDefault()})}}(),enableSelection:function(){return this.unbind(".ui-disableSelection")},zIndex:function(b){if(void 0!==b)return this.css("zIndex",b);if(this.length)for(var c,d,e=a(this[0]);e.length&&e[0]!==document;){if(c=e.css("position"),("absolute"===c||"relative"===c||"fixed"===c)&&(d=parseInt(e.css("zIndex"),10),!isNaN(d)&&0!==d))return d;e=e.parent()}return 0}}),a.ui.plugin={add:function(b,c,d){var e,f=a.ui[b].prototype;for(e in d)f.plugins[e]=f.plugins[e]||[],f.plugins[e].push([c,d[e]])},call:function(a,b,c,d){var e,f=a.plugins[b];if(f&&(d||a.element[0].parentNode&&11!==a.element[0].parentNode.nodeType))for(e=0;e<f.length;e++)a.options[f[e][0]]&&f[e][1].apply(a.element,c)}};var j=0,k=Array.prototype.slice;a.cleanData=function(b){return function(c){var d,e,f;for(f=0;null!=(e=c[f]);f++)try{d=a._data(e,"events"),d&&d.remove&&a(e).triggerHandler("remove")}catch(g){}b(c)}}(a.cleanData),a.widget=function(b,c,d){var e,f,g,h,i={},j=b.split(".")[0];return b=b.split(".")[1],e=j+"-"+b,d||(d=c,c=a.Widget),a.expr[":"][e.toLowerCase()]=function(b){return!!a.data(b,e)},a[j]=a[j]||{},f=a[j][b],g=a[j][b]=function(a,b){return this._createWidget?void(arguments.length&&this._createWidget(a,b)):new g(a,b)},a.extend(g,f,{version:d.version,_proto:a.extend({},d),_childConstructors:[]}),h=new c,h.options=a.widget.extend({},h.options),a.each(d,function(b,d){return a.isFunction(d)?void(i[b]=function(){var a=function(){return c.prototype[b].apply(this,arguments)},e=function(a){return c.prototype[b].apply(this,a)};return function(){var b,c=this._super,f=this._superApply;return this._super=a,this._superApply=e,b=d.apply(this,arguments),this._super=c,this._superApply=f,b}}()):void(i[b]=d)}),g.prototype=a.widget.extend(h,{widgetEventPrefix:f?h.widgetEventPrefix||b:b},i,{constructor:g,namespace:j,widgetName:b,widgetFullName:e}),f?(a.each(f._childConstructors,function(b,c){var d=c.prototype;a.widget(d.namespace+"."+d.widgetName,g,c._proto)}),delete f._childConstructors):c._childConstructors.push(g),a.widget.bridge(b,g),g},a.widget.extend=function(b){for(var c,d,e=k.call(arguments,1),f=0,g=e.length;g>f;f++)for(c in e[f])d=e[f][c],e[f].hasOwnProperty(c)&&void 0!==d&&(a.isPlainObject(d)?b[c]=a.isPlainObject(b[c])?a.widget.extend({},b[c],d):a.widget.extend({},d):b[c]=d);return b},a.widget.bridge=function(b,c){var d=c.prototype.widgetFullName||b;a.fn[b]=function(e){var f="string"==typeof e,g=k.call(arguments,1),h=this;return f?this.each(function(){var c,f=a.data(this,d);return"instance"===e?(h=f,!1):f?a.isFunction(f[e])&&"_"!==e.charAt(0)?(c=f[e].apply(f,g),c!==f&&void 0!==c?(h=c&&c.jquery?h.pushStack(c.get()):c,!1):void 0):a.error("no such method '"+e+"' for "+b+" widget instance"):a.error("cannot call methods on "+b+" prior to initialization; attempted to call method '"+e+"'")}):(g.length&&(e=a.widget.extend.apply(null,[e].concat(g))),this.each(function(){var b=a.data(this,d);b?(b.option(e||{}),b._init&&b._init()):a.data(this,d,new c(e,this))})),h}},a.Widget=function(){},a.Widget._childConstructors=[],a.Widget.prototype={widgetName:"widget",widgetEventPrefix:"",defaultElement:"<div>",options:{disabled:!1,create:null},_createWidget:function(b,c){c=a(c||this.defaultElement||this)[0],this.element=a(c),this.uuid=j++,this.eventNamespace="."+this.widgetName+this.uuid,this.bindings=a(),this.hoverable=a(),this.focusable=a(),c!==this&&(a.data(c,this.widgetFullName,this),this._on(!0,this.element,{remove:function(a){a.target===c&&this.destroy()}}),this.document=a(c.style?c.ownerDocument:c.document||c),this.window=a(this.document[0].defaultView||this.document[0].parentWindow)),this.options=a.widget.extend({},this.options,this._getCreateOptions(),b),this._create(),this._trigger("create",null,this._getCreateEventData()),this._init()},_getCreateOptions:a.noop,_getCreateEventData:a.noop,_create:a.noop,_init:a.noop,destroy:function(){this._destroy(),this.element.unbind(this.eventNamespace).removeData(this.widgetFullName).removeData(a.camelCase(this.widgetFullName)),this.widget().unbind(this.eventNamespace).removeAttr("aria-disabled").removeClass(this.widgetFullName+"-disabled ui-state-disabled"),this.bindings.unbind(this.eventNamespace),this.hoverable.removeClass("ui-state-hover"),this.focusable.removeClass("ui-state-focus")},_destroy:a.noop,widget:function(){return this.element},option:function(b,c){var d,e,f,g=b;if(0===arguments.length)return a.widget.extend({},this.options);if("string"==typeof b)if(g={},d=b.split("."),b=d.shift(),d.length){for(e=g[b]=a.widget.extend({},this.options[b]),f=0;f<d.length-1;f++)e[d[f]]=e[d[f]]||{},e=e[d[f]];if(b=d.pop(),1===arguments.length)return void 0===e[b]?null:e[b];e[b]=c}else{if(1===arguments.length)return void 0===this.options[b]?null:this.options[b];g[b]=c}return this._setOptions(g),this},_setOptions:function(a){var b;for(b in a)this._setOption(b,a[b]);return this},_setOption:function(a,b){return this.options[a]=b,"disabled"===a&&(this.widget().toggleClass(this.widgetFullName+"-disabled",!!b),b&&(this.hoverable.removeClass("ui-state-hover"),this.focusable.removeClass("ui-state-focus"))),this},enable:function(){return this._setOptions({disabled:!1})},disable:function(){return this._setOptions({disabled:!0})},_on:function(b,c,d){var e,f=this;"boolean"!=typeof b&&(d=c,c=b,b=!1),d?(c=e=a(c),this.bindings=this.bindings.add(c)):(d=c,c=this.element,e=this.widget()),a.each(d,function(d,g){function h(){return b||f.options.disabled!==!0&&!a(this).hasClass("ui-state-disabled")?("string"==typeof g?f[g]:g).apply(f,arguments):void 0}"string"!=typeof g&&(h.guid=g.guid=g.guid||h.guid||a.guid++);var i=d.match(/^([\w:-]*)\s*(.*)$/),j=i[1]+f.eventNamespace,k=i[2];k?e.delegate(k,j,h):c.bind(j,h)})},_off:function(b,c){c=(c||"").split(" ").join(this.eventNamespace+" ")+this.eventNamespace,b.unbind(c).undelegate(c),this.bindings=a(this.bindings.not(b).get()),this.focusable=a(this.focusable.not(b).get()),this.hoverable=a(this.hoverable.not(b).get())},_delay:function(a,b){function c(){return("string"==typeof a?d[a]:a).apply(d,arguments)}var d=this;return setTimeout(c,b||0)},_hoverable:function(b){this.hoverable=this.hoverable.add(b),this._on(b,{mouseenter:function(b){a(b.currentTarget).addClass("ui-state-hover")},mouseleave:function(b){a(b.currentTarget).removeClass("ui-state-hover")}})},_focusable:function(b){this.focusable=this.focusable.add(b),this._on(b,{focusin:function(b){a(b.currentTarget).addClass("ui-state-focus")},focusout:function(b){a(b.currentTarget).removeClass("ui-state-focus")}})},_trigger:function(b,c,d){var e,f,g=this.options[b];if(d=d||{},c=a.Event(c),c.type=(b===this.widgetEventPrefix?b:this.widgetEventPrefix+b).toLowerCase(),c.target=this.element[0],f=c.originalEvent)for(e in f)e in c||(c[e]=f[e]);return this.element.trigger(c,d),!(a.isFunction(g)&&g.apply(this.element[0],[c].concat(d))===!1||c.isDefaultPrevented())}},a.each({show:"fadeIn",hide:"fadeOut"},function(b,c){a.Widget.prototype["_"+b]=function(d,e,f){"string"==typeof e&&(e={effect:e});var g,h=e?e===!0||"number"==typeof e?c:e.effect||c:b;
+
+* Researching
+
+php Sessions /dev/shm
+Sessions saved to RAM
+ROHO-6566 - Sync Calendar Ticket
+https://nocworx.nexcess.net/ticket/707857
+find /etc/httpd/conf.d/ -name vhost_* -print | xargs sed -i 's|VirtualHost|Include /etc/httpd/abuse/block\nVirtualHost|g'
+
+https://nocworx.nexcess.net/ticket/733879
+
+Request Fall funds tranferred MINGSTAP: 517-481-7640
+
+http://magento.stackexchange.com/questions/142453/error-after-deleting-all-cache-in-magento-2
+
++1 800-767-4222
+PO Box 44047
+Detroit, MI 48244
+
+* Monitoring
+* Interns
+Jordan 313-759-4959 
+Michael Rickerman Call Back
+DeVaugn 313-603-0478
+* Net Ops
+** Sylabus
+Ansible documentation
+Authenticaion/Authorization/Accounting
+Network Management Procedures/Remote Management
+Port Security/Network Security Posturing/Threat detection
+Nexcess Network Topology and IP address scheme
+The use of IPv6 inside and outside of our network
+Commonly encountered quirks of the network or DC
+Wireless protocols
+Routing Protocols
+BGP ASN - Backbone/Service Providers/SLA
+VoIP - IP Telephony - PBX gateways
+VLANS - Clients/Voice/Data/Public/Wireless
+QOS and Policing/Shaping
+Firewalls
+Documentation Practices
+Logging Activity and work performed
+Job Performance Evaluations
+Network automation and scripting
+Interaction with Data center operations
+Procurement and purchasing
+Working on side projects - both networking and support related
+VPN - encryption and gateways
+Spanning-tree configuration
+DNS Management
+DHCP Server - IP Helper Address
+Lab Network
+Access to OTR
+admin-nick
+Nazzaron37$
+{{secure_base_url}}js/
